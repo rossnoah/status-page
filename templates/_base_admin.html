@@ -1,0 +1,238 @@
+{% extends "_base.html" %}
+{% block title %}{{ site_name }} — Admin{% endblock %}
+{% block extra_head %}
+<style>
+  .admin-layout { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  .sidebar {
+    width: 220px; flex-shrink: 0; padding: 20px 16px;
+    background: var(--paper2); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sidebar-brand {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--ink); letter-spacing: 2px; text-transform: uppercase;
+    padding: 8px 10px 16px; border-bottom: 1px dashed var(--line);
+    margin-bottom: 12px;
+  }
+  .sidebar-group {
+    font-family: var(--mono); font-size: 9px; font-weight: 600;
+    color: var(--ink3); letter-spacing: 2px; text-transform: uppercase;
+    padding: 12px 10px 4px;
+  }
+  .sidebar-link {
+    display: block; padding: 7px 10px; border-radius: 5px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink2);
+    text-decoration: none; transition: background .1s, color .1s;
+  }
+  .sidebar-link:hover { background: var(--line); color: var(--ink); text-decoration: none; }
+  .sidebar-link.active { background: var(--ink); color: var(--paper); }
+
+  .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .topbar-title { font-family: var(--hand); font-size: 22px; font-weight: 700; color: var(--ink); }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+  .admin-content { flex: 1; padding: 24px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 6px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    border: 1.2px solid var(--ink); cursor: pointer;
+    transition: background .1s, color .1s;
+    text-decoration: none;
+    background: transparent; color: var(--ink);
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-danger { border-color: var(--bad); color: var(--bad); }
+  .btn-danger:hover { background: var(--bad); color: white; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* Tables */
+  .admin-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  .admin-table th {
+    text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600;
+    color: var(--ink3); letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-table td {
+    padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--ink2);
+  }
+  .admin-table tr:hover td { background: var(--paper2); }
+
+  /* Pills */
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+  }
+  .pill-ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .pill-warn { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+  .pill-bad { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+  .pill-maint { background: color-mix(in srgb, var(--maint) 15%, transparent); color: var(--maint); }
+
+  /* Form elements */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block; margin-bottom: 4px;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--ink3); letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    border: 1.2px solid var(--line); background: var(--card);
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    outline: none; transition: border-color .15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--ink); }
+  .form-textarea { min-height: 80px; resize: vertical; }
+  .form-checkbox {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink2);
+    cursor: pointer;
+  }
+  .form-checkbox input { width: 16px; height: 16px; accent-color: var(--ink); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Card wrapper for forms */
+  .form-card {
+    max-width: 640px; padding: 24px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  }
+
+  .form-actions { display: flex; gap: 8px; padding-top: 16px; border-top: 1px dashed var(--line); margin-top: 8px; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: var(--ink3);
+    font-family: var(--hand); font-size: 16px;
+  }
+
+  /* Mobile hamburger */
+  .mobile-topbar {
+    display: none; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--paper2);
+  }
+  .mobile-topbar-brand {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--ink); letter-spacing: 2px; text-transform: uppercase;
+  }
+  .hamburger {
+    display: flex; flex-direction: column; gap: 4px;
+    background: none; border: none; cursor: pointer; padding: 6px;
+  }
+  .hamburger span {
+    display: block; width: 20px; height: 2px; background: var(--ink);
+    border-radius: 1px; transition: transform .2s, opacity .2s;
+  }
+  .sidebar-open .hamburger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .sidebar-open .hamburger span:nth-child(2) { opacity: 0; }
+  .sidebar-open .hamburger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+  /* Sidebar overlay for mobile */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    z-index: 90;
+  }
+
+  /* Responsive table wrapper */
+  .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Mobile ────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .mobile-topbar { display: flex; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      transform: translateX(-100%); transition: transform .25s ease;
+      width: 260px; overflow-y: auto;
+    }
+    .sidebar-open .sidebar { transform: translateX(0); }
+    .sidebar-open .sidebar-overlay { display: block; }
+
+    .admin-layout { flex-direction: column; }
+    .admin-main { min-height: 0; }
+
+    .topbar { padding: 10px 16px; }
+    .topbar-title { font-size: 18px; }
+    .topbar-actions { gap: 6px; flex-wrap: wrap; }
+
+    .admin-content { padding: 16px; }
+
+    /* Tables scroll horizontally */
+    .admin-table { min-width: 600px; }
+
+    /* Forms stack */
+    .form-row { grid-template-columns: 1fr; }
+    .form-card { max-width: 100%; padding: 16px; }
+    .form-actions { flex-wrap: wrap; }
+
+    /* Dashboard metric grid */
+    .metric-grid-mobile { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+
+  @media (max-width: 420px) {
+    .topbar { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .topbar-actions { width: 100%; }
+    .btn { font-size: 11px; padding: 6px 10px; }
+    .metric-grid-mobile { grid-template-columns: 1fr !important; }
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="admin-layout" id="adminLayout">
+  <div class="mobile-topbar">
+    <span class="mobile-topbar-brand">{{ site_name }}</span>
+    <button class="hamburger" onclick="document.getElementById('adminLayout').classList.toggle('sidebar-open')" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="sidebar-overlay" onclick="document.getElementById('adminLayout').classList.remove('sidebar-open')"></div>
+  <nav class="sidebar">
+    <div class="sidebar-brand">{{ site_name }}</div>
+
+    <div class="sidebar-group">Monitoring</div>
+    <a href="/admin" class="sidebar-link {% block nav_dashboard %}{% endblock %}">Dashboard</a>
+    <a href="/admin/services" class="sidebar-link {% block nav_services %}{% endblock %}">Services</a>
+    <a href="/admin/incidents" class="sidebar-link {% block nav_incidents %}{% endblock %}">Incidents</a>
+    <a href="/admin/maintenance" class="sidebar-link {% block nav_maintenance %}{% endblock %}">Maintenance</a>
+
+    <div style="flex:1"></div>
+
+    <div class="sidebar-group">Config</div>
+    <a href="/admin/settings" class="sidebar-link {% block nav_settings %}{% endblock %}">Site Settings</a>
+
+    <a href="/" class="sidebar-link" target="_blank">View public page</a>
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 10px;">
+      <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <div class="theme-toggle-knob"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">theme</span>
+    </div>
+    <form action="/admin/logout" method="post" style="margin:0">
+      <button type="submit" class="sidebar-link" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit">Logout</button>
+    </form>
+  </nav>
+
+  <div class="admin-main">
+    <div class="topbar">
+      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </div>
+    <div class="admin-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

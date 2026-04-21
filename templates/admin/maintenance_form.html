@@ -1,0 +1,72 @@
+{% extends "_base_admin.html" %}
+{% block nav_maintenance %}active{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Maintenance{% else %}Schedule Maintenance{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" action="{% if is_edit %}/admin/maintenance/{{ maintenance.as_ref().unwrap().maintenance.id }}/edit{% else %}/admin/maintenance/new{% endif %}">
+  <div class="form-card">
+    <div class="form-group">
+      <label class="form-label" for="title">Title</label>
+      <input type="text" id="title" name="title" class="form-input" required
+             value="{% if let Some(m) = maintenance %}{{ m.maintenance.title }}{% endif %}"
+             placeholder="e.g. Database upgrade">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="start_time">Start Time</label>
+        <input type="datetime-local" id="start_time" name="start_time" class="form-input" required
+               value="{% if let Some(m) = maintenance %}{{ m.maintenance.start_time }}{% endif %}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="end_time">End Time</label>
+        <input type="datetime-local" id="end_time" name="end_time" class="form-input" required
+               value="{% if let Some(m) = maintenance %}{{ m.maintenance.end_time }}{% endif %}">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="impact">Expected Impact</label>
+        <select id="impact" name="impact" class="form-select">
+          <option value="none" {% if let Some(m) = maintenance %}{% if m.maintenance.impact == "none" %}selected{% endif %}{% endif %}>None</option>
+          <option value="degraded" {% if let Some(m) = maintenance %}{% if m.maintenance.impact == "degraded" %}selected{% endif %}{% endif %}>Degraded Performance</option>
+          <option value="down" {% if let Some(m) = maintenance %}{% if m.maintenance.impact == "down" %}selected{% endif %}{% endif %}>Full Downtime</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="status">Status</label>
+        <select id="status" name="status" class="form-select">
+          <option value="scheduled" {% if let Some(m) = maintenance %}{% if m.maintenance.status == "scheduled" %}selected{% endif %}{% endif %}>Scheduled</option>
+          <option value="in_progress" {% if let Some(m) = maintenance %}{% if m.maintenance.status == "in_progress" %}selected{% endif %}{% endif %}>In Progress</option>
+          <option value="completed" {% if let Some(m) = maintenance %}{% if m.maintenance.status == "completed" %}selected{% endif %}{% endif %}>Completed</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Affected Services</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        {% for svc in services %}
+        <label class="form-checkbox">
+          <input type="checkbox" name="service_ids" value="{{ svc.id }}"
+                 {% if let Some(m) = maintenance %}{% if m.service_names.contains(&svc.name) %}checked{% endif %}{% endif %}>
+          {{ svc.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="notes">Notes</label>
+      <textarea id="notes" name="notes" class="form-textarea"
+                placeholder="Additional details...">{% if let Some(m) = maintenance %}{{ m.maintenance.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Schedule Maintenance{% endif %}</button>
+      <a href="/admin/maintenance" class="btn">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

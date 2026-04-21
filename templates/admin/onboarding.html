@@ -1,0 +1,147 @@
+{% extends "_base.html" %}
+
+{% block title %}Setup{% endblock %}
+
+{% block body %}
+<div class="page" style="min-height:100vh;justify-content:center;align-items:center">
+  <div style="max-width:480px;width:100%">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:var(--hand);font-size:36px;font-weight:700;color:var(--ink);letter-spacing:-0.5px">
+        welcome
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--ink3);margin-top:6px">
+        let's get your status page set up
+      </div>
+    </div>
+
+    {% if let Some(e) = error %}
+    <div style="padding:10px 14px;margin-bottom:16px;border:1px solid var(--bad);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--bad);background:color-mix(in srgb, var(--bad) 8%, transparent)">
+      {{ e }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/admin/setup" onsubmit="return collectLinks()" style="display:flex;flex-direction:column;gap:20px">
+      <input type="hidden" name="footer_links_json" id="footer-links-json" value="[]">
+
+      <!-- Step 1: Site Identity -->
+      <div style="padding:20px;background:var(--card);border:1px solid var(--line);border-radius:8px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px">
+          site identity
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">
+            SITE NAME
+          </label>
+          <input type="text" name="site_name" value="{{ site_name }}" required
+            placeholder="Status Page"
+            style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+          <div style="font-family:var(--hand);font-size:11px;color:var(--ink3);margin-top:3px">
+            shown in the header and browser tab
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Admin Password -->
+      <div style="padding:20px;background:var(--card);border:1px solid var(--line);border-radius:8px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px">
+          admin password
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">
+            PASSWORD
+          </label>
+          <input type="password" name="password" required minlength="8"
+            placeholder="choose a strong password"
+            style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">
+            CONFIRM PASSWORD
+          </label>
+          <input type="password" name="password_confirm" required minlength="8"
+            placeholder="type it again"
+            style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+        </div>
+      </div>
+
+      <!-- Step 3: Footer Links -->
+      <div style="padding:20px;background:var(--card);border:1px solid var(--line);border-radius:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;text-transform:uppercase">
+            footer links
+          </div>
+          <button type="button" onclick="addFooterLink()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--line);background:transparent;font-family:var(--mono);font-size:11px;color:var(--ink2);cursor:pointer">+ Add</button>
+        </div>
+
+        <div id="footer-links">
+          {% for link in footer_links %}
+          <div class="footer-link-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:12px;align-items:end">
+            <div>
+              <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">LABEL</label>
+              <input type="text" class="fl-label" value="{{ link.label }}" placeholder="my site"
+                style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+            </div>
+            <div>
+              <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">URL</label>
+              <input type="text" class="fl-url" value="{{ link.url }}" placeholder="https://example.com"
+                style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+            </div>
+            <button type="button" onclick="removeFooterLink(this)" style="padding:8px 10px;border-radius:6px;border:1px solid var(--bad);background:transparent;font-family:var(--mono);font-size:11px;color:var(--bad);cursor:pointer;margin-bottom:0">&times;</button>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div id="no-links-msg" style="font-family:var(--hand);font-size:11px;color:var(--ink3);{% if !footer_links.is_empty() %}display:none{% endif %}">
+          optional &mdash; shown at the bottom of the public page
+        </div>
+      </div>
+
+      <button type="submit"
+        style="width:100%;padding:12px;border-radius:6px;border:1.2px solid var(--ink);background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.5px;transition:opacity .15s">
+        launch status page
+      </button>
+    </form>
+  </div>
+</div>
+
+<template id="footer-link-template">
+  <div class="footer-link-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:12px;align-items:end">
+    <div>
+      <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">LABEL</label>
+      <input type="text" class="fl-label" placeholder="my site"
+        style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+    </div>
+    <div>
+      <label style="display:block;margin-bottom:4px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink3)">URL</label>
+      <input type="text" class="fl-url" placeholder="https://example.com"
+        style="width:100%;padding:8px 12px;border-radius:6px;border:1.2px solid var(--line);background:var(--paper);font-family:var(--mono);font-size:13px;color:var(--ink);outline:none">
+    </div>
+    <button type="button" onclick="removeFooterLink(this)" style="padding:8px 10px;border-radius:6px;border:1px solid var(--bad);background:transparent;font-family:var(--mono);font-size:11px;color:var(--bad);cursor:pointer;margin-bottom:0">&times;</button>
+  </div>
+</template>
+
+<script>
+function addFooterLink() {
+  var tmpl = document.getElementById('footer-link-template');
+  var clone = tmpl.content.cloneNode(true);
+  document.getElementById('footer-links').appendChild(clone);
+  document.getElementById('no-links-msg').style.display = 'none';
+}
+function removeFooterLink(btn) {
+  btn.closest('.footer-link-row').remove();
+  if (!document.querySelector('.footer-link-row')) {
+    document.getElementById('no-links-msg').style.display = '';
+  }
+}
+function collectLinks() {
+  var links = [];
+  document.querySelectorAll('.footer-link-row').forEach(function(row) {
+    var label = row.querySelector('.fl-label').value.trim();
+    var url = row.querySelector('.fl-url').value.trim();
+    if (label) links.push({label: label, url: url});
+  });
+  document.getElementById('footer-links-json').value = JSON.stringify(links);
+  return true;
+}
+</script>
+{% endblock %}

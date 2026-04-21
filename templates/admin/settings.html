@@ -1,0 +1,106 @@
+{% extends "_base_admin.html" %}
+{% block nav_settings %}active{% endblock %}
+{% block page_title %}Site Settings{% endblock %}
+
+{% block content %}
+{% if let Some(msg) = success %}
+<div style="margin-bottom:16px;padding:10px 14px;border-radius:6px;background:color-mix(in srgb, var(--ok) 12%, transparent);border:1px solid var(--ok);font-family:var(--mono);font-size:12px;color:var(--ok)">
+  {{ msg }}
+</div>
+{% endif %}
+
+{% if let Some(msg) = error %}
+<div style="margin-bottom:16px;padding:10px 14px;border-radius:6px;background:color-mix(in srgb, var(--bad) 12%, transparent);border:1px solid var(--bad);font-family:var(--mono);font-size:12px;color:var(--bad)">
+  {{ msg }}
+</div>
+{% endif %}
+
+<form method="post" action="/admin/settings" onsubmit="return collectLinks()">
+  <input type="hidden" name="footer_links_json" id="footer-links-json" value="[]">
+  <div class="form-card">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px">
+      General
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="site_name">Site Name</label>
+      <input type="text" id="site_name" name="site_name" class="form-input" required
+             value="{{ settings.site_name }}"
+             placeholder="e.g. My Status Page">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:4px">
+        Shown in the browser tab and page header
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin:20px 0 16px;padding-top:16px;border-top:1px dashed var(--line);display:flex;align-items:center;justify-content:space-between">
+      Footer Links
+      <button type="button" class="btn btn-sm" onclick="addFooterLink()">+ Add link</button>
+    </div>
+
+    <div id="footer-links">
+      {% for link in settings.footer_links %}
+      <div class="form-row footer-link-row" style="margin-bottom:12px;align-items:end">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Label</label>
+          <input type="text" class="form-input fl-label"
+                 value="{{ link.label }}" placeholder="e.g. Homepage">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">URL</label>
+          <input type="text" class="form-input fl-url"
+                 value="{{ link.url }}" placeholder="https://example.com">
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeFooterLink(this)" style="margin-bottom:1px;white-space:nowrap">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="no-links-msg" style="font-family:var(--hand);font-size:13px;color:var(--ink3);padding:12px 0;{% if !settings.footer_links.is_empty() %}display:none{% endif %}">
+      No footer links yet &mdash; click "Add link" above to add one.
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+  </div>
+</form>
+
+<template id="footer-link-template">
+  <div class="form-row footer-link-row" style="margin-bottom:12px;align-items:end">
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Label</label>
+      <input type="text" class="form-input fl-label" placeholder="e.g. Homepage">
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">URL</label>
+      <input type="text" class="form-input fl-url" placeholder="https://example.com">
+    </div>
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeFooterLink(this)" style="margin-bottom:1px;white-space:nowrap">Remove</button>
+  </div>
+</template>
+
+<script>
+function addFooterLink() {
+  var tmpl = document.getElementById('footer-link-template');
+  var clone = tmpl.content.cloneNode(true);
+  document.getElementById('footer-links').appendChild(clone);
+  document.getElementById('no-links-msg').style.display = 'none';
+}
+function removeFooterLink(btn) {
+  btn.closest('.footer-link-row').remove();
+  if (!document.querySelector('.footer-link-row')) {
+    document.getElementById('no-links-msg').style.display = '';
+  }
+}
+function collectLinks() {
+  var links = [];
+  document.querySelectorAll('.footer-link-row').forEach(function(row) {
+    var label = row.querySelector('.fl-label').value.trim();
+    var url = row.querySelector('.fl-url').value.trim();
+    if (label) links.push({label: label, url: url});
+  });
+  document.getElementById('footer-links-json').value = JSON.stringify(links);
+  return true;
+}
+</script>
+{% endblock %}

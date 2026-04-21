@@ -1,0 +1,48 @@
+{% extends "_base_admin.html" %}
+{% block nav_maintenance %}active{% endblock %}
+{% block page_title %}Maintenance{% endblock %}
+{% block topbar_actions %}<a href="/admin/maintenance/new" class="btn btn-primary">+ Schedule Maintenance</a>{% endblock %}
+
+{% block content %}
+{% if items.is_empty() %}
+<div class="empty-state">
+  No maintenance windows scheduled.
+  <div style="margin-top:8px"><a href="/admin/maintenance/new" class="btn btn-primary">Schedule first maintenance</a></div>
+</div>
+{% else %}
+<div class="table-responsive">
+<table class="admin-table">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Services</th>
+      <th>Impact</th>
+      <th>Starts</th>
+      <th>Ends</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td style="color:var(--ink);font-weight:600">{{ item.maintenance.title }}</td>
+      <td>{{ item.service_names.join(", ") }}</td>
+      <td><span class="pill pill-{{ item.maintenance.impact_class() }}">{{ item.maintenance.impact }}</span></td>
+      <td>{{ item.maintenance.start_time }}</td>
+      <td>{{ item.maintenance.end_time }}</td>
+      <td><span class="pill pill-maint">{{ item.maintenance.status }}</span></td>
+      <td style="white-space:nowrap">
+        <a href="/admin/maintenance/{{ item.maintenance.id }}/edit" class="btn btn-sm">Edit</a>
+        <form action="/admin/maintenance/{{ item.maintenance.id }}/delete" method="post" style="display:inline"
+              onsubmit="return confirm('Delete this maintenance window?')">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

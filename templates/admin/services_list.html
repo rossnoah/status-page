@@ -1,0 +1,53 @@
+{% extends "_base_admin.html" %}
+{% block nav_services %}active{% endblock %}
+{% block page_title %}Services{% endblock %}
+{% block topbar_actions %}
+<a href="/admin/services/import-export" class="btn">Import / Export</a>
+<a href="/admin/services/new" class="btn btn-primary">+ New Service</a>
+{% endblock %}
+
+{% block content %}
+{% if services.is_empty() %}
+<div class="empty-state">
+  No services yet.
+  <div style="margin-top:8px"><a href="/admin/services/new" class="btn btn-primary">Add first service</a></div>
+</div>
+{% else %}
+<div class="table-responsive">
+<table class="admin-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Category</th>
+      <th>Probe</th>
+      <th>Interval</th>
+      <th>Uptime</th>
+      <th>Latency</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for svc in services %}
+    <tr>
+      <td style="color:var(--ink);font-weight:600">{{ svc.name }}</td>
+      <td>{{ svc.category }}</td>
+      <td>{{ svc.probe_type }}</td>
+      <td>{{ svc.interval_secs }}s</td>
+      <td>{{ svc.uptime_fmt() }}%</td>
+      <td>{{ svc.latency_fmt() }}ms</td>
+      <td><span class="pill pill-{{ svc.status_class() }}">{{ svc.status_label() }}</span></td>
+      <td style="white-space:nowrap">
+        <a href="/admin/services/{{ svc.id }}/edit" class="btn btn-sm">Edit</a>
+        <form action="/admin/services/{{ svc.id }}/delete" method="post" style="display:inline"
+              onsubmit="return confirm('Delete {{ svc.name }}?')">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

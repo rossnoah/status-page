@@ -1,0 +1,81 @@
+{% extends "_base_admin.html" %}
+{% block nav_incidents %}active{% endblock %}
+{% block page_title %}Incidents{% endblock %}
+{% block topbar_actions %}<a href="/admin/incidents/new" class="btn btn-primary">+ New Incident</a>{% endblock %}
+
+{% block content %}
+{% if incidents.is_empty() %}
+<div class="empty-state">
+  No incidents recorded.
+  <div style="margin-top:8px"><a href="/admin/incidents/new" class="btn btn-primary">Create first incident</a></div>
+</div>
+{% else %}
+<div style="display:flex;flex-direction:column;gap:12px">
+  {% for inc in incidents %}
+  <div style="background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 20px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="pill pill-{% if inc.incident.status == "resolved" %}ok{% else %}{{ inc.incident.severity_class() }}{% endif %}">
+            {{ inc.incident.status_label() }}
+          </span>
+          <span style="font-family:var(--hand);font-size:16px;font-weight:700;color:var(--ink)">
+            {{ inc.incident.title }}
+          </span>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--ink3);display:flex;gap:10px;flex-wrap:wrap">
+          <span>{{ inc.incident.severity }}</span>
+          <span>&middot; started {{ inc.incident.started_at }}</span>
+          {% if let Some(resolved) = inc.incident.resolved_at %}
+          <span>&middot; resolved {{ resolved }}</span>
+          {% endif %}
+          {% if !inc.service_names.is_empty() %}
+          <span>&middot; {{ inc.service_names.join(", ") }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <a href="/admin/incidents/{{ inc.incident.id }}/edit" class="btn btn-sm">Edit</a>
+        <form action="/admin/incidents/{{ inc.incident.id }}/delete" method="post" style="display:inline"
+              onsubmit="return confirm('Delete this incident?')">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Updates -->
+    {% if !inc.updates.is_empty() %}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+      {% for upd in inc.updates %}
+      <div style="display:flex;gap:10px;padding:4px 0;font-family:var(--mono);font-size:11px;flex-wrap:wrap">
+        <span style="min-width:120px;color:var(--ink3);flex-shrink:0">{{ upd.created_at }}</span>
+        <span class="pill pill-{% if upd.status == "resolved" %}ok{% else if upd.status == "investigating" %}warn{% else %}maint{% endif %}" style="flex-shrink:0">
+          {{ upd.status }}
+        </span>
+        <span style="color:var(--ink2)">{{ upd.message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Post update form -->
+    {% if inc.incident.status != "resolved" %}
+    <form method="post" action="/admin/incidents/{{ inc.incident.id }}/update"
+          style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <input type="text" name="message" class="form-input" placeholder="Post an update..." required style="font-size:12px;padding:6px 10px">
+      </div>
+      <select name="status" class="form-select" style="width:140px;font-size:12px;padding:6px 10px">
+        <option value="investigating">investigating</option>
+        <option value="identified">identified</option>
+        <option value="monitoring">monitoring</option>
+        <option value="resolved">resolved</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Post</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

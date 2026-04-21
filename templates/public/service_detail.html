@@ -1,0 +1,52 @@
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="dot dot-{{ service.status_class() }}" style="width:12px;height:12px"></span>
+      <span style="font-family:var(--hand);font-weight:700;font-size:20px;color:var(--ink);letter-spacing:-0.3px">
+        {{ service.name }}
+      </span>
+    </div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--ink3)">
+      {{ self.category_lower() }}
+    </div>
+  </div>
+  <div onclick="closeDetail()" style="cursor:pointer;padding:4px 10px;font-family:var(--mono);font-size:13px;color:var(--ink2)">&times;</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">
+  <div class="metric-box">
+    <div class="metric-label">status</div>
+    <div class="metric-value" style="color:var(--{{ service.status_class() }})">{{ service.status_label() }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">uptime 90d</div>
+    <div class="metric-value">{{ self.uptime_fmt() }}%</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">latency</div>
+    <div class="metric-value">
+      {% if service.status == "down" %}&mdash;{% else %}{{ self.latency_fmt() }}ms{% endif %}
+    </div>
+  </div>
+</div>
+
+<div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;margin-bottom:6px">
+  HISTORY &middot; 90D
+</div>
+<div class="heatmap" style="grid-template-columns:repeat(45, 1fr)">
+  {% for day in days %}
+  <div class="heatmap-cell" style="background:var(--{{ day.status_class() }});{% if day.status() == "ok" %}opacity:0.72{% endif %}">
+    <div class="heatmap-tooltip">
+      <div class="tt-date">{{ day.date }}</div>
+      <div><span class="tt-status-{{ day.status() }}">{{ day.status() }}</span> &middot; <span class="tt-latency">{{ day.latency_fmt() }}ms avg</span></div>
+    </div>
+  </div>
+  {% endfor %}
+  {% for _ in 0..self.empty_days() %}
+  <div class="heatmap-cell" style="background:var(--ink3);opacity:0.2">
+    <div class="heatmap-tooltip">
+      <div class="tt-date">no data</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

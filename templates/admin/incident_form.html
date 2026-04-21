@@ -1,0 +1,62 @@
+{% extends "_base_admin.html" %}
+{% block nav_incidents %}active{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Incident{% else %}New Incident{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" action="{% if is_edit %}/admin/incidents/{{ incident.as_ref().unwrap().incident.id }}/edit{% else %}/admin/incidents/new{% endif %}">
+  <div class="form-card">
+    <div class="form-group">
+      <label class="form-label" for="title">Title</label>
+      <input type="text" id="title" name="title" class="form-input" required
+             value="{% if let Some(i) = incident %}{{ i.incident.title }}{% endif %}"
+             placeholder="Brief description of the incident">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="severity">Severity</label>
+        <select id="severity" name="severity" class="form-select">
+          <option value="none" {% if let Some(i) = incident %}{% if i.incident.severity == "none" %}selected{% endif %}{% endif %}>None</option>
+          <option value="degraded" {% if let Some(i) = incident %}{% if i.incident.severity == "degraded" %}selected{% endif %}{% endif %}>Degraded</option>
+          <option value="down" {% if let Some(i) = incident %}{% if i.incident.severity == "down" %}selected{% endif %}{% endif %}>Down</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="status">Status</label>
+        <select id="status" name="status" class="form-select">
+          <option value="investigating" {% if let Some(i) = incident %}{% if i.incident.status == "investigating" %}selected{% endif %}{% endif %}>Investigating</option>
+          <option value="identified" {% if let Some(i) = incident %}{% if i.incident.status == "identified" %}selected{% endif %}{% endif %}>Identified</option>
+          <option value="monitoring" {% if let Some(i) = incident %}{% if i.incident.status == "monitoring" %}selected{% endif %}{% endif %}>Monitoring</option>
+          <option value="resolved" {% if let Some(i) = incident %}{% if i.incident.status == "resolved" %}selected{% endif %}{% endif %}>Resolved</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Affected Services</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        {% for svc in services %}
+        <label class="form-checkbox">
+          <input type="checkbox" name="service_ids" value="{{ svc.id }}"
+                 {% if let Some(i) = incident %}{% if i.service_names.contains(&svc.name) %}checked{% endif %}{% endif %}>
+          {{ svc.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if !is_edit %}
+    <div class="form-group">
+      <label class="form-label" for="message">Initial Update (optional)</label>
+      <textarea id="message" name="message" class="form-textarea"
+                placeholder="Describe what's happening..."></textarea>
+    </div>
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create Incident{% endif %}</button>
+      <a href="/admin/incidents" class="btn">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

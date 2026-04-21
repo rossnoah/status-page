@@ -1,0 +1,69 @@
+{% extends "_base_admin.html" %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="metric-grid-mobile" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-bottom:24px">
+  <div class="metric-box">
+    <div class="metric-label">Total Services</div>
+    <div class="metric-value">{{ total_services }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">Operational</div>
+    <div class="metric-value" style="color:var(--ok)">{{ ok_services }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">Degraded</div>
+    <div class="metric-value" style="color:var(--warn)">{{ degraded_services }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">Down</div>
+    <div class="metric-value" style="color:var(--bad)">{{ down_services }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">Active Incidents</div>
+    <div class="metric-value">{{ active_incidents }}</div>
+  </div>
+  <div class="metric-box">
+    <div class="metric-label">Upcoming Maint.</div>
+    <div class="metric-value">{{ upcoming_maintenance }}</div>
+  </div>
+</div>
+
+<!-- Services quick view -->
+<div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">
+  Services
+</div>
+{% if services.is_empty() %}
+<div class="empty-state">
+  No services configured yet.
+  <div style="margin-top:8px"><a href="/admin/services/new" class="btn btn-primary">Add first service</a></div>
+</div>
+{% else %}
+<div class="table-responsive">
+<table class="admin-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Uptime</th>
+      <th>Latency</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for svc in services %}
+    <tr>
+      <td style="color:var(--ink);font-weight:600">{{ svc.name }}</td>
+      <td>{{ svc.category }}</td>
+      <td><span class="pill pill-{{ svc.status_class() }}">{{ svc.status_label() }}</span></td>
+      <td>{{ svc.uptime_fmt() }}%</td>
+      <td>{{ svc.latency_fmt() }}ms</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

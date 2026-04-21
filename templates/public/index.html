@@ -1,0 +1,284 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ site_name }}{% endblock %}
+
+{% block body %}
+<div class="page" style="min-height:100vh">
+  <!-- Masthead -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div class="masthead-title" style="font-family:var(--hand);font-size:28px;font-weight:700;color:var(--ink);letter-spacing:-0.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      {{ site_name }}
+    </div>
+    <div class="masthead-meta" style="font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right;display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <div class="meta-text">
+        <div id="timestamp"></div>
+        <div style="margin-top:2px">90d view</div>
+      </div>
+      <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <div class="theme-toggle-knob"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall Banner -->
+  <div class="sketch-border banner" data-stroke="var(--{% if overall_status == "ok" %}ok{% else if overall_status == "degraded" %}warn{% else %}bad{% endif %})" data-stroke-width="1.6" data-seed="11" style="background:color-mix(in srgb, var(--{% if overall_status == "ok" %}ok{% else if overall_status == "degraded" %}warn{% else %}bad{% endif %}) 5%, transparent)">
+    <div class="banner-dot">
+      <div class="banner-dot-inner" style="background:var(--{% if overall_status == "ok" %}ok{% else if overall_status == "degraded" %}warn{% else %}bad{% endif %})"></div>
+      {% if overall_status != "ok" %}
+      <div class="banner-dot-ring" style="border-color:var(--{% if overall_status == "degraded" %}warn{% else %}bad{% endif %})"></div>
+      {% endif %}
+    </div>
+    <div style="font-family:var(--hand);font-weight:700;font-size:22px;color:var(--ink);letter-spacing:-0.3px;line-height:1.1">
+      {% if overall_status == "ok" %}All systems operational{% else if overall_status == "degraded" %}Partial degradation{% else %}Outage in progress{% endif %}
+    </div>
+    <div style="margin-left:auto;align-self:flex-end;font-family:var(--mono);font-size:11px;color:var(--ink2);display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <span>{{ ok_count }} ok</span>
+      {% if degraded_count > 0 %}<span style="color:var(--warn)">&middot; {{ degraded_count }} degraded</span>{% endif %}
+      {% if down_count > 0 %}<span style="color:var(--bad)">&middot; {{ down_count }} down</span>{% endif %}
+    </div>
+  </div>
+
+  <!-- Upcoming Maintenance -->
+  {% for m in upcoming_maintenance %}
+  <div class="maint-banner">
+    <strong style="color:var(--maint)">&#128736; Maintenance:</strong> {{ m.maintenance.title }}
+    <span style="color:var(--ink3)">&middot; {{ m.maintenance.start_time }} — {{ m.maintenance.end_time }}</span>
+    {% if !m.service_names.is_empty() %}
+    <span style="color:var(--ink3)">&middot; affects: {{ m.service_names.join(", ") }}</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Filter Bar -->
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;flex-wrap:wrap" id="filter-chips">
+      <span class="chip active" data-cat="all" onclick="filterCat(this, '')">all</span>
+      {% for cat in categories %}
+      <span class="chip" data-cat="{{ cat }}" onclick="filterCat(this, '{{ cat }}')">{{ cat }}</span>
+      {% endfor %}
+    </div>
+    <div style="flex:1;min-width:120px">
+      <div style="padding:5px 10px;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:5px">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">&#8981;</span>
+        <input type="text" id="search-input" placeholder="search services" oninput="filterSearch()"
+          style="flex:1;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:12px;color:var(--ink)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span class="legend-item"><span class="legend-swatch" style="background:var(--ok)"></span> operational</span>
+    <span class="legend-item"><span class="legend-swatch" style="background:var(--warn)"></span> degraded</span>
+    <span class="legend-item"><span class="legend-swatch" style="background:var(--bad)"></span> down</span>
+    <span style="margin-left:auto;color:var(--ink3)">&larr; 90 days ago &middot;&middot;&middot;&middot;&middot;&middot;&middot;&middot;&middot; today &rarr;</span>
+  </div>
+
+  <!-- Service Grid -->
+  <div class="service-grid" id="service-grid">
+    {% for card in services %}
+    <div class="sketch-card sketch-border" data-seed="{{ loop.index }}" data-category="{{ card.service.category }}" data-name="{{ card.name_lower() }}" data-id="{{ card.service.id }}">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span class="dot dot-{{ card.service.status_class() }}" style="width:11px;height:11px;margin-top:2px"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25">
+            {{ card.service.name }}
+          </div>
+          <div style="font-family:var(--hand);font-size:12px;color:var(--ink2);margin-top:1px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap">
+            <span>{{ card.service.status_label() }}</span>
+            <span style="color:var(--ink3);font-family:var(--mono);font-size:10px">&middot; {{ card.category_lower() }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Heatmap -->
+      <div class="heatmap" style="grid-template-columns:repeat(45, 1fr)">
+        {% for day in card.days %}
+        <div class="heatmap-cell" style="background:var(--{{ day.status_class() }});{% if day.status() == "ok" %}opacity:0.72{% endif %}">
+          <div class="heatmap-tooltip">
+            <div class="tt-date">{{ day.date }}</div>
+            <div><span class="tt-status-{{ day.status() }}">{{ day.status() }}</span> &middot; <span class="tt-latency">{{ day.latency_fmt() }}ms avg</span></div>
+          </div>
+        </div>
+        {% endfor %}
+        {% for _ in 0..card.empty_days() %}
+        <div class="heatmap-cell" style="background:var(--ink3);opacity:0.2">
+          <div class="heatmap-tooltip">
+            <div class="tt-date">no data</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <!-- Footer -->
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:10.5px;color:var(--ink2)">
+        <span>
+          <span style="color:var(--ink);font-weight:600">{{ card.uptime_fmt() }}%</span>
+          <span style="color:var(--ink3)"> &middot; 90d</span>
+        </span>
+        <span>
+          {% if card.service.status == "down" %}
+          <span style="color:var(--bad);font-weight:600">&mdash; &middot; unreachable</span>
+          {% else %}
+          {{ card.latency_fmt() }}ms
+          {% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Incident Strip -->
+  <div class="incident-strip sketch-border" data-seed="131" data-stroke="var(--line)" data-stroke-width="1">
+    {% if !active_incidents.is_empty() %}
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;margin-bottom:8px">
+      ACTIVE &middot; INCIDENTS
+    </div>
+    {% for inc in active_incidents %}
+    <div style="display:flex;gap:10px;padding:3px 0;font-family:var(--mono);font-size:11.5px;align-items:baseline">
+      <span style="width:68px;color:var(--ink3)">ongoing</span>
+      <span style="color:var(--{{ inc.incident.severity_class() }});font-weight:600">
+        <span class="dot dot-{{ inc.incident.severity_class() }}" style="width:7px;height:7px"></span>
+        {{ inc.incident.status_label() }}
+      </span>
+      <span style="color:var(--ink2)">
+        <span style="color:var(--ink);font-weight:600">{{ inc.incident.title }}</span>
+        {% if !inc.service_names.is_empty() %} &mdash; affects {{ inc.service_names.join(", ") }}{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+    {% else if !recent_resolved.is_empty() %}
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;margin-bottom:8px">
+      RECENT &middot; RESOLVED
+    </div>
+    {% for inc in recent_resolved %}
+    <div style="display:flex;gap:10px;padding:3px 0;font-family:var(--mono);font-size:11.5px;align-items:baseline">
+      <span style="width:68px;color:var(--ink3)">{% match inc.incident.resolved_at %}{% when Some with (d) %}{{ d }}{% when None %}{% endmatch %}</span>
+      <span style="color:var(--ok);font-weight:600">
+        <span class="dot dot-ok" style="width:7px;height:7px"></span> resolved
+      </span>
+      <span style="color:var(--ink2)">
+        <span style="color:var(--ink);font-weight:600">{{ inc.incident.title }}</span>
+      </span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;margin-bottom:8px">
+      INCIDENTS
+    </div>
+    <div style="font-family:var(--hand);font-size:13px;color:var(--ink2)">no recent incidents to report</div>
+    {% endif %}
+  </div>
+
+  <!-- Spacer to push footer down -->
+  <div style="flex:1"></div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>
+      {% for link in footer_links %}
+      {% if !loop.first %}<span> &middot; </span>{% endif %}
+      <a href="{{ link.url }}">{{ link.label }}</a>
+      {% endfor %}
+    </div>
+    <a href="/admin">admin</a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('timestamp').textContent = new Date().toISOString().slice(0,16).replace('T',' ') + 'Z';
+
+  // ── Sketchy border rendering (client-side, uses ResizeObserver) ──
+  function sketchPrng(seed) {
+    return function() {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function sketchyPath(w, h, r, seed, wobble) {
+    var rand = sketchPrng(seed);
+    r = Math.min(r, w / 2, h / 2);
+    function j(n) { return n + (rand() - 0.5) * wobble; }
+    var pts = [
+      [j(r), 0], [j(w - r), 0],
+      [w, j(r)], [w, j(h - r)],
+      [j(w - r), h], [j(r), h],
+      [0, j(h - r)], [0, j(r)],
+    ];
+    return 'M '+pts[0][0]+' '+pts[0][1]+
+      ' L '+pts[1][0]+' '+pts[1][1]+
+      ' Q '+w+' 0 '+pts[2][0]+' '+pts[2][1]+
+      ' L '+pts[3][0]+' '+pts[3][1]+
+      ' Q '+w+' '+h+' '+pts[4][0]+' '+pts[4][1]+
+      ' L '+pts[5][0]+' '+pts[5][1]+
+      ' Q 0 '+h+' '+pts[6][0]+' '+pts[6][1]+
+      ' L '+pts[7][0]+' '+pts[7][1]+
+      ' Q 0 0 '+pts[0][0]+' '+pts[0][1]+' Z';
+  }
+
+  function initSketchBorders() {
+    document.querySelectorAll('.sketch-border').forEach(function(el) {
+      var seed = parseInt(el.dataset.seed || '1', 10);
+      var strokeColor = el.dataset.stroke || 'var(--ink)';
+      var strokeWidth = parseFloat(el.dataset.strokeWidth || '1.3');
+      var wobble = parseFloat(el.dataset.wobble || '0.85');
+      var radius = parseFloat(el.dataset.radius || '8');
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;';
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', strokeColor);
+      path.setAttribute('stroke-width', strokeWidth);
+      path.setAttribute('stroke-linejoin', 'round');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+      el.appendChild(svg);
+
+      var ro = new ResizeObserver(function(entries) {
+        var entry = entries[0];
+        var box = entry.borderBoxSize && entry.borderBoxSize[0];
+        var w = box ? box.inlineSize : el.offsetWidth;
+        var h = box ? box.blockSize : el.offsetHeight;
+        w = Math.round(w);
+        h = Math.round(h);
+        if (w > 0 && h > 0) {
+          var pad = strokeWidth;
+          var iw = w - pad * 2;
+          var ih = h - pad * 2;
+          svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+          path.setAttribute('d', sketchyPath(iw, ih, radius, seed * 3 + 1, wobble));
+          path.setAttribute('transform', 'translate(' + pad + ',' + pad + ')');
+        }
+      });
+      ro.observe(el);
+    });
+  }
+  initSketchBorders();
+
+  // ── Filtering ──
+  var currentCat = '';
+  function filterCat(el, cat) {
+    currentCat = cat;
+    document.querySelectorAll('#filter-chips .chip').forEach(function(c) { c.classList.remove('active'); });
+    el.classList.add('active');
+    applyFilters();
+  }
+  function filterSearch() { applyFilters(); }
+  function applyFilters() {
+    var search = document.getElementById('search-input').value.toLowerCase();
+    document.querySelectorAll('#service-grid .sketch-card').forEach(function(card) {
+      var cat = card.dataset.category;
+      var name = card.dataset.name;
+      var catMatch = !currentCat || cat === currentCat;
+      var searchMatch = !search || name.includes(search);
+      card.style.display = (catMatch && searchMatch) ? '' : 'none';
+    });
+  }
+
+</script>
+{% endblock %}

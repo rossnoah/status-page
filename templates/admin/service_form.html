@@ -1,0 +1,92 @@
+{% extends "_base_admin.html" %}
+{% block nav_services %}active{% endblock %}
+{% block page_title %}{% if is_edit %}Edit Service{% else %}New Service{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" action="{% if is_edit %}/admin/services/{{ service.as_ref().unwrap().id }}/edit{% else %}/admin/services/new{% endif %}">
+  <div class="form-card">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px">
+      Basics
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="name">Name</label>
+      <input type="text" id="name" name="name" class="form-input" required
+             value="{% if let Some(s) = service %}{{ s.name }}{% endif %}"
+             placeholder="e.g. blog.mysite">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="category">Category</label>
+        <input type="text" id="category" name="category" class="form-input"
+               value="{% if let Some(s) = service %}{{ s.category }}{% endif %}"
+               placeholder="e.g. Web, API, Infra">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="region">Region</label>
+        <input type="text" id="region" name="region" class="form-input"
+               value="{% if let Some(s) = service %}{{ s.region }}{% endif %}"
+               placeholder="e.g. fra1">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="url">URL / Address</label>
+      <input type="text" id="url" name="url" class="form-input"
+             value="{% if let Some(s) = service %}{{ s.url }}{% endif %}"
+             placeholder="https://example.com">
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin:20px 0 16px;padding-top:16px;border-top:1px dashed var(--line)">
+      Probe
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="probe_type">Probe Type</label>
+        <select id="probe_type" name="probe_type" class="form-select">
+          <option value="http" {% if let Some(s) = service %}{% if s.probe_type == "http" %}selected{% endif %}{% endif %}>HTTP</option>
+          <option value="tcp" {% if let Some(s) = service %}{% if s.probe_type == "tcp" %}selected{% endif %}{% endif %}>TCP</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="interval_secs">Interval (seconds)</label>
+        <input type="number" id="interval_secs" name="interval_secs" class="form-input"
+               value="{% if let Some(s) = service %}{{ s.interval_secs }}{% else %}60{% endif %}"
+               min="10" step="1">
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;text-transform:uppercase;margin:20px 0 16px;padding-top:16px;border-top:1px dashed var(--line)">
+      Visibility
+    </div>
+
+    <div class="form-group">
+      <label class="form-checkbox">
+        <input type="checkbox" name="is_public" value="1"
+               {% if let Some(s) = service %}{% if s.is_public %}checked{% endif %}{% else %}checked{% endif %}>
+        Public (shown on status page)
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="form-checkbox">
+        <input type="checkbox" name="enabled" value="1"
+               {% if let Some(s) = service %}{% if s.enabled %}checked{% endif %}{% else %}checked{% endif %}>
+        Enabled (probe active)
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="sort_order">Sort Order</label>
+      <input type="number" id="sort_order" name="sort_order" class="form-input" style="max-width:120px"
+             value="{% if let Some(s) = service %}{{ s.sort_order }}{% else %}0{% endif %}">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create Service{% endif %}</button>
+      <a href="/admin/services" class="btn">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

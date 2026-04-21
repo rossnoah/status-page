@@ -1,0 +1,321 @@
+{% extends "_base_admin.html" %}
+{% block nav_services %}{% endblock %}
+{% block page_title %}Import / Export Services{% endblock %}
+{% block topbar_actions %}<a href="/admin/services" class="btn">Back to Services</a>{% endblock %}
+
+{% block content %}
+<style>
+  .ie-tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:1px solid var(--line); }
+  .ie-tab {
+    padding:10px 20px; font-family:var(--mono); font-size:12px; font-weight:600;
+    color:var(--ink3); cursor:pointer; border-bottom:2px solid transparent;
+    background:none; border-top:none; border-left:none; border-right:none;
+    transition: color .15s, border-color .15s;
+  }
+  .ie-tab:hover { color:var(--ink); }
+  .ie-tab.active { color:var(--ink); border-bottom-color:var(--ink); }
+  .ie-panel { display:none; }
+  .ie-panel.active { display:block; }
+
+  .ie-card {
+    background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:20px; margin-bottom:16px;
+  }
+  .ie-desc {
+    font-family:var(--mono); font-size:12px; color:var(--ink3);
+    margin-bottom:16px; line-height:1.6;
+  }
+
+  .svc-checklist { display:flex; flex-direction:column; gap:6px; margin:16px 0; max-height:400px; overflow-y:auto; }
+  .svc-check-item {
+    display:flex; align-items:center; gap:10px; padding:8px 12px;
+    border:1px solid var(--line); border-radius:6px; background:var(--paper);
+    cursor:pointer; transition: border-color .15s;
+  }
+  .svc-check-item:hover { border-color:var(--ink3); }
+  .svc-check-item input[type="checkbox"] { width:16px; height:16px; accent-color:var(--ink); flex-shrink:0; }
+  .svc-check-name { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--ink); }
+  .svc-check-meta { font-family:var(--mono); font-size:11px; color:var(--ink3); }
+
+  .select-bar { display:flex; gap:8px; margin-bottom:8px; }
+  .select-link {
+    font-family:var(--mono); font-size:11px; color:var(--ink3); cursor:pointer;
+    text-decoration:underline; background:none; border:none; padding:0;
+  }
+  .select-link:hover { color:var(--ink); }
+
+  .json-area {
+    width:100%; min-height:200px; padding:12px; border-radius:6px;
+    border:1.2px solid var(--line); background:var(--paper);
+    font-family:var(--mono); font-size:12px; color:var(--ink);
+    resize:vertical; outline:none; transition:border-color .15s;
+  }
+  .json-area:focus { border-color:var(--ink); }
+
+  .ie-actions { display:flex; gap:8px; margin-top:16px; }
+
+  .import-preview { margin-top:16px; }
+  .import-result {
+    padding:12px 16px; border-radius:6px; margin-top:16px;
+    font-family:var(--mono); font-size:12px;
+  }
+  .import-result.success { background:color-mix(in srgb, var(--ok) 12%, transparent); color:var(--ok); border:1px solid color-mix(in srgb, var(--ok) 30%, transparent); }
+  .import-result.error { background:color-mix(in srgb, var(--bad) 12%, transparent); color:var(--bad); border:1px solid color-mix(in srgb, var(--bad) 30%, transparent); }
+
+  .import-conflict {
+    font-family:var(--mono); font-size:11px; color:var(--warn);
+    padding:2px 6px; border-radius:4px;
+    background:color-mix(in srgb, var(--warn) 12%, transparent);
+  }
+</style>
+
+<div class="ie-tabs">
+  <button class="ie-tab active" onclick="switchTab('export')">Export</button>
+  <button class="ie-tab" onclick="switchTab('import')">Import</button>
+</div>
+
+<!-- ── Export Panel ──────────────────────────────────────── -->
+<div id="panel-export" class="ie-panel active">
+  <div class="ie-card">
+    <div class="ie-desc">Select services to export. The generated JSON contains service configurations only (no uptime history or incidents).</div>
+
+    {% if services.is_empty() %}
+    <div class="empty-state">No services to export.</div>
+    {% else %}
+    <div class="select-bar">
+      <button class="select-link" onclick="toggleAll('export', true)">Select all</button>
+      <button class="select-link" onclick="toggleAll('export', false)">Deselect all</button>
+    </div>
+    <div class="svc-checklist" id="export-list">
+      {% for svc in services %}
+      <label class="svc-check-item">
+        <input type="checkbox" value="{{ svc.id }}" checked>
+        <div>
+          <div class="svc-check-name">{{ svc.name }}</div>
+          <div class="svc-check-meta">{{ svc.category }} &middot; {{ svc.probe_type }} &middot; {{ svc.url }}</div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="ie-actions">
+      <button class="btn btn-primary" onclick="doExport()">Generate JSON</button>
+      <button class="btn" id="copy-btn" onclick="copyExport()" style="display:none">Copy to clipboard</button>
+    </div>
+    {% endif %}
+
+    <div id="export-output" style="margin-top:16px; display:none;">
+      <textarea class="json-area" id="export-json" readonly style="min-height:300px"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ── Import Panel ──────────────────────────────────────── -->
+<div id="panel-import" class="ie-panel">
+  <div class="ie-card">
+    <div class="ie-desc">Paste a JSON export below and preview it. Then select which services to import. Services with names that already exist will be skipped.</div>
+
+    <textarea class="json-area" id="import-json" placeholder='Paste JSON here...'></textarea>
+
+    <div class="ie-actions">
+      <button class="btn btn-primary" onclick="previewImport()">Preview</button>
+    </div>
+
+    <div class="import-preview" id="import-preview" style="display:none">
+      <div class="select-bar">
+        <button class="select-link" onclick="toggleAll('import', true)">Select all</button>
+        <button class="select-link" onclick="toggleAll('import', false)">Deselect all</button>
+      </div>
+      <div class="svc-checklist" id="import-list"></div>
+      <div class="ie-actions">
+        <button class="btn btn-primary" onclick="doImport()">Import Selected</button>
+      </div>
+    </div>
+
+    <div id="import-result" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+// Service data for export (embedded from server)
+const ALL_SERVICES = [
+  {% for svc in services %}
+  {
+    name: {{ svc.name|json|safe }},
+    category: {{ svc.category|json|safe }},
+    url: {{ svc.url|json|safe }},
+    probe_type: {{ svc.probe_type|json|safe }},
+    probe_config: {{ svc.probe_config|json|safe }},
+    interval_secs: {{ svc.interval_secs }},
+    region: {{ svc.region|json|safe }},
+    is_public: {{ svc.is_public }},
+    enabled: {{ svc.enabled }},
+    sort_order: {{ svc.sort_order }},
+    id: {{ svc.id|json|safe }}
+  },
+  {% endfor %}
+];
+
+const EXISTING_NAMES = ALL_SERVICES.map(s => s.name.toLowerCase());
+
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.ie-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ie-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.querySelector('.ie-tab[onclick*="' + tab + '"]').classList.add('active');
+}
+
+// Select all / deselect all
+function toggleAll(panel, checked) {
+  const list = document.getElementById(panel + '-list');
+  list.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach(cb => cb.checked = checked);
+}
+
+// ── Export ──────────────────────────────────────────────
+function doExport() {
+  const checked = Array.from(document.querySelectorAll('#export-list input:checked')).map(cb => cb.value);
+  const selected = ALL_SERVICES.filter(s => checked.includes(s.id));
+
+  // Strip internal id for export
+  const exportData = selected.map(s => ({
+    name: s.name,
+    category: s.category,
+    url: s.url,
+    probe_type: s.probe_type,
+    probe_config: s.probe_config,
+    interval_secs: s.interval_secs,
+    region: s.region,
+    is_public: s.is_public,
+    enabled: s.enabled,
+    sort_order: s.sort_order,
+  }));
+
+  const blob = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    services: exportData
+  };
+
+  const json = JSON.stringify(blob, null, 2);
+  document.getElementById('export-json').value = json;
+  document.getElementById('export-output').style.display = 'block';
+  document.getElementById('copy-btn').style.display = '';
+}
+
+function copyExport() {
+  const ta = document.getElementById('export-json');
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to clipboard', 2000);
+  });
+}
+
+// ── Import ─────────────────────────────────────────────
+let parsedImport = [];
+
+function previewImport() {
+  const raw = document.getElementById('import-json').value.trim();
+  const resultEl = document.getElementById('import-result');
+  const previewEl = document.getElementById('import-preview');
+
+  resultEl.style.display = 'none';
+  previewEl.style.display = 'none';
+
+  if (!raw) {
+    showResult('error', 'Please paste a JSON export first.');
+    return;
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (e) {
+    showResult('error', 'Invalid JSON: ' + e.message);
+    return;
+  }
+
+  if (!data.services || !Array.isArray(data.services) || data.services.length === 0) {
+    showResult('error', 'No services found in the JSON. Expected a "services" array.');
+    return;
+  }
+
+  // Validate each service has required fields
+  const required = ['name', 'url', 'probe_type'];
+  for (let i = 0; i < data.services.length; i++) {
+    const svc = data.services[i];
+    for (const field of required) {
+      if (!svc[field]) {
+        showResult('error', `Service #${i + 1} is missing required field "${field}".`);
+        return;
+      }
+    }
+  }
+
+  parsedImport = data.services;
+
+  // Build preview checklist
+  const list = document.getElementById('import-list');
+  list.innerHTML = '';
+
+  parsedImport.forEach((svc, i) => {
+    const exists = EXISTING_NAMES.includes(svc.name.toLowerCase());
+    const label = document.createElement('label');
+    label.className = 'svc-check-item';
+    if (exists) label.style.opacity = '0.55';
+    label.innerHTML = `
+      <input type="checkbox" value="${i}" ${exists ? 'disabled' : 'checked'}>
+      <div>
+        <div class="svc-check-name">${escHtml(svc.name)}${exists ? ' <span class="import-conflict">already exists</span>' : ''}</div>
+        <div class="svc-check-meta">${escHtml(svc.category || 'Uncategorized')} &middot; ${escHtml(svc.probe_type)} &middot; ${escHtml(svc.url)}</div>
+      </div>
+    `;
+    list.appendChild(label);
+  });
+
+  previewEl.style.display = 'block';
+}
+
+function doImport() {
+  const checked = Array.from(document.querySelectorAll('#import-list input:checked')).map(cb => parseInt(cb.value));
+  if (checked.length === 0) {
+    showResult('error', 'No services selected for import.');
+    return;
+  }
+
+  const toImport = checked.map(i => parsedImport[i]);
+
+  fetch('/admin/services/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ services: toImport }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      showResult('error', data.error);
+    } else {
+      showResult('success', `Successfully imported ${data.imported} service(s).${data.skipped > 0 ? ` ${data.skipped} skipped (duplicate names).` : ''}`);
+      // Refresh after brief delay so user sees the message
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  })
+  .catch(err => {
+    showResult('error', 'Import failed: ' + err.message);
+  });
+}
+
+function showResult(type, msg) {
+  const el = document.getElementById('import-result');
+  el.className = 'import-result ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+</script>
+{% endblock %}
