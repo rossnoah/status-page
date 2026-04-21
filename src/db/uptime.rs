@@ -34,7 +34,7 @@ pub fn get_daily_aggregates(
     let mut stmt = conn.prepare(
         "SELECT service_id, date, total_checks, ok_checks, avg_latency_ms
          FROM daily_aggregates
-         WHERE service_id = ?1 AND date >= date('now', ?2)
+         WHERE service_id = ?1 AND date > date('now', ?2)
          ORDER BY date ASC",
     )?;
     let offset = format!("-{days} days");
@@ -57,7 +57,7 @@ pub fn compute_uptime_pct(conn: &Connection, service_id: &str, days: i64) -> Res
             100.0
          )
          FROM daily_aggregates
-         WHERE service_id = ?1 AND date >= date('now', ?2)",
+         WHERE service_id = ?1 AND date > date('now', ?2)",
     )?;
     let offset = format!("-{days} days");
     let pct: f64 = stmt.query_row(params![service_id, offset], |row| row.get(0))?;
