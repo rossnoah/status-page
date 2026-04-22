@@ -17,12 +17,21 @@ curl -L https://github.com/rossnoah/status-page/releases/latest/download/status-
 sudo mv status-page /usr/local/bin/
 ```
 
-**Deploy with service to Linux x86_64**
+**Deploy with systemd** (Linux x86_64)
 
 ```sh
+# Download and install binary
 curl -L https://github.com/rossnoah/status-page/releases/latest/download/status-page-linux-x86_64.tar.gz | tar xz
 sudo mv status-page /usr/local/bin/
+
+# Create dedicated user/group and data directory
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin status-page
+sudo mkdir -p /var/lib/status-page
+sudo chown status-page:status-page /var/lib/status-page
+
+# Install and start service
 sudo cp deploy/status-page.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl enable --now status-page
 # Then setup cloudflared tunnel pointing at localhost:8080
 ```
