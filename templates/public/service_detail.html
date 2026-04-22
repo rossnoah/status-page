@@ -35,18 +35,20 @@
 </div>
 <div class="heatmap" style="grid-template-columns:repeat(45, 1fr)">
   {% for day in days %}
+  {% if day.total_checks > 0 %}
   <div class="heatmap-cell" style="background:var(--{{ day.status_class() }});{% if day.status() == "ok" %}opacity:0.72{% endif %}">
     <div class="heatmap-tooltip">
       <div class="tt-date">{{ day.date }}</div>
       <div><span class="tt-status-{{ day.status() }}">{{ day.status() }}</span> &middot; <span class="tt-latency">{{ day.latency_fmt() }}ms avg</span></div>
     </div>
   </div>
-  {% endfor %}
-  {% for _ in 0..self.empty_days() %}
+  {% else %}
   <div class="heatmap-cell" style="background:var(--ink3);opacity:0.2">
     <div class="heatmap-tooltip">
-      <div class="tt-date">no data</div>
+      <div class="tt-date">{{ day.date }}</div>
+      <div>no data</div>
     </div>
   </div>
+  {% endif %}
   {% endfor %}
 </div>

@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::extract::State;
+use chrono::Utc;
 
 use crate::db::DbPool;
 use crate::error::AppError;
@@ -29,9 +32,28 @@ impl ServiceCard {
     pub fn name_lower(&self) -> String {
         self.service.name.to_lowercase()
     }
-    pub fn empty_days(&self) -> usize {
-        90usize.saturating_sub(self.days.len())
-    }
+}
+
+/// Expand a sparse list of daily aggregates into a full 90-day vector where
+/// each slot corresponds to its actual date. The last element is always today;
+/// dates with no data are filled with a no-data placeholder.
+fn expand_days(service_id: &str, sparse: Vec<DailyAggregate>, num_days: usize) -> Vec<DailyAggregate> {
+    let today = Utc::now().date_naive();
+    let by_date: HashMap<String, DailyAggregate> = sparse
+        .into_iter()
+        .map(|d| (d.date.clone(), d))
+        .collect();
+
+    (0..num_days)
+        .map(|i| {
+            let date = today - chrono::Duration::days((num_days - 1 - i) as i64);
+            let date_str = date.format("%Y-%m-%d").to_string();
+            by_date
+                .get(&date_str)
+                .cloned()
+                .unwrap_or_else(|| DailyAggregate::no_data(service_id, &date_str))
+        })
+        .collect()
 }
 
 #[derive(Template, WebTemplate)]
@@ -70,7 +92,7 @@ pub async fn index(State(db): State<DbPool>) -> Result<IndexTemplate, AppError> 
         )?;
         cards.push(ServiceCard {
             service: svc.clone(),
-            days,
+            days: expand_days(&svc.id, days, 90),
             uptime_pct_90d,
         });
     }

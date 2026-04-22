@@ -10,6 +10,17 @@ pub struct DailyAggregate {
 }
 
 impl DailyAggregate {
+    /// Create a placeholder entry for a date with no data.
+    pub fn no_data(service_id: &str, date: &str) -> Self {
+        Self {
+            service_id: service_id.to_string(),
+            date: date.to_string(),
+            total_checks: 0,
+            ok_checks: 0,
+            avg_latency_ms: 0.0,
+        }
+    }
+
     pub fn status(&self) -> &str {
         if self.total_checks == 0 {
             return "nodata";
