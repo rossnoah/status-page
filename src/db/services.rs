@@ -7,7 +7,7 @@ pub fn list_all(conn: &Connection) -> Result<Vec<Service>, AppError> {
         "SELECT id, name, category, url, probe_type, probe_config, interval_secs,
                 status, uptime_pct, avg_latency_ms, region, is_public, enabled,
                 sort_order, created_at, updated_at
-         FROM services ORDER BY sort_order, category, name",
+         FROM services ORDER BY category, sort_order, name",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(Service {
@@ -38,7 +38,7 @@ pub fn list_public(conn: &Connection) -> Result<Vec<Service>, AppError> {
                 status, uptime_pct, avg_latency_ms, region, is_public, enabled,
                 sort_order, created_at, updated_at
          FROM services WHERE is_public = 1 AND enabled = 1
-         ORDER BY sort_order, category, name",
+         ORDER BY category, sort_order, name",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(Service {
