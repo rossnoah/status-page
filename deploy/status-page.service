@@ -1,0 +1,21 @@
+[Unit]
+Description=Status Page
+After=network.target
+
+[Service]
+Type=simple
+User=status-page
+Group=status-page
+ExecStart=/usr/local/bin/status-page
+Restart=on-failure
+RestartSec=5
+
+Environment=HOST=0.0.0.0
+Environment=PORT=8080
+Environment=DATABASE_PATH=/var/lib/status-page/status.db
+Environment=RUST_LOG=info
+
+WorkingDirectory=/var/lib/status-page
+
+[Install]
+WantedBy=multi-user.target
