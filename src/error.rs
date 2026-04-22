@@ -8,6 +8,7 @@ pub enum AppError {
     NotFound,
     Unauthorized,
     BadRequest(String),
+    RateLimited,
     Internal(String),
 }
 
@@ -19,6 +20,7 @@ impl std::fmt::Display for AppError {
             Self::NotFound => write!(f, "not found"),
             Self::Unauthorized => write!(f, "unauthorized"),
             Self::BadRequest(msg) => write!(f, "bad request: {msg}"),
+            Self::RateLimited => write!(f, "rate limited"),
             Self::Internal(msg) => write!(f, "internal error: {msg}"),
         }
     }
@@ -30,6 +32,9 @@ impl IntoResponse for AppError {
             Self::NotFound => (StatusCode::NOT_FOUND, "Not found").into_response(),
             Self::Unauthorized => Redirect::to("/admin/login").into_response(),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg).into_response(),
+            Self::RateLimited => {
+                (StatusCode::TOO_MANY_REQUESTS, "Too many requests").into_response()
+            }
             other => {
                 tracing::error!("Internal error: {other}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()

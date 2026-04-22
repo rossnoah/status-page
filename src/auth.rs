@@ -7,6 +7,53 @@ use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use rusqlite::{params, Connection};
+use std::collections::VecDeque;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+// ── Login rate limiter ─────────────────────────────────────
+//
+// Global rate limit shared across ALL IPs. This is intentional:
+// the app may or may not run behind Cloudflare / a reverse proxy,
+// and per-IP limiting would require correctly parsing
+// X-Forwarded-For or CF-Connecting-IP — trusting the wrong header
+// is worse than no rate limit at all. For a single-admin status
+// page this is perfectly fine.
+
+pub struct LoginRateLimiter {
+    attempts: Mutex<VecDeque<Instant>>,
+    max_attempts: usize,
+    window: Duration,
+}
+
+impl LoginRateLimiter {
+    pub fn new(max_attempts: usize, window: Duration) -> Self {
+        Self {
+            attempts: Mutex::new(VecDeque::new()),
+            max_attempts,
+            window,
+        }
+    }
+
+    /// Record an attempt. Returns `true` if allowed, `false` if rate-limited.
+    pub fn check(&self) -> bool {
+        let mut attempts = self.attempts.lock().unwrap();
+        let now = Instant::now();
+        let cutoff = now - self.window;
+
+        // Drain expired entries from the front
+        while attempts.front().is_some_and(|&t| t < cutoff) {
+            attempts.pop_front();
+        }
+
+        if attempts.len() >= self.max_attempts {
+            false
+        } else {
+            attempts.push_back(now);
+            true
+        }
+    }
+}
 
 pub fn hash_password(password: &str) -> Result<String, AppError> {
     let salt = SaltString::generate(&mut OsRng);

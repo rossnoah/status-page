@@ -6,7 +6,7 @@ use axum::response::{Html, Redirect, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use crate::auth;
+use crate::auth::{self, LoginRateLimiter};
 use crate::db::DbPool;
 use crate::error::AppError;
 use crate::models::incident::{Incident, IncidentUpdate, IncidentWithUpdates};
@@ -42,8 +42,20 @@ pub struct LoginForm {
 
 pub async fn login_submit(
     State(db): State<DbPool>,
+    State(limiter): State<Arc<LoginRateLimiter>>,
     Form(form): Form<LoginForm>,
 ) -> Result<Response, AppError> {
+    if !limiter.check() {
+        let tmpl = LoginTemplate {
+            error: Some("Too many login attempts. Please wait a minute and try again.".into()),
+        };
+        return Ok(Html(
+            tmpl.render()
+                .map_err(|e| AppError::Internal(e.to_string()))?,
+        )
+        .into_response());
+    }
+
     let done = db
         .read(|conn| crate::db::settings::is_onboarding_complete(conn))
         .await?;

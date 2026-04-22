@@ -23,6 +23,7 @@ use tower_http::compression::CompressionLayer;
 pub struct AppState {
     pub db: db::DbPool,
     pub scheduler: Arc<probes::ProbeScheduler>,
+    pub login_limiter: Arc<auth::LoginRateLimiter>,
 }
 
 impl FromRef<AppState> for db::DbPool {
@@ -34,6 +35,12 @@ impl FromRef<AppState> for db::DbPool {
 impl FromRef<AppState> for Arc<probes::ProbeScheduler> {
     fn from_ref(state: &AppState) -> Self {
         state.scheduler.clone()
+    }
+}
+
+impl FromRef<AppState> for Arc<auth::LoginRateLimiter> {
+    fn from_ref(state: &AppState) -> Self {
+        state.login_limiter.clone()
     }
 }
 
@@ -123,9 +130,15 @@ async fn main() {
 
     let scheduler = Arc::new(probes::ProbeScheduler::start(pool.clone()));
 
+    let login_limiter = Arc::new(auth::LoginRateLimiter::new(
+        10,
+        std::time::Duration::from_secs(60),
+    ));
+
     let state = AppState {
         db: pool.clone(),
         scheduler: scheduler.clone(),
+        login_limiter,
     };
 
     let cleanup_db = pool.clone();
