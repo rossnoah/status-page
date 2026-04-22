@@ -21,27 +21,39 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
-      - name: Upload artifact
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: status-page-linux-x86_64
           path: target/release/status-page
+
+      - name: Upload deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy
+          path: deploy/
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifact
+      - name: Download binary artifact
         uses: actions/download-artifact@v4
         with:
           name: status-page-linux-x86_64
+
+      - name: Download deploy artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy
+          path: deploy/
 
       - name: Make binary executable
         run: chmod +x status-page
 
       - name: Create tarball
-        run: tar czf status-page-linux-x86_64.tar.gz status-page
+        run: tar czf status-page-linux-x86_64.tar.gz status-page deploy/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

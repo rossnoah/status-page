@@ -20,7 +20,7 @@ sudo mv status-page /usr/local/bin/
 **Deploy with service to Linux x86_64**
 
 ```sh
-curl -L .../releases/latest/download/status-page-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/rossnoah/status-page/releases/latest/download/status-page-linux-x86_64.tar.gz | tar xz
 sudo mv status-page /usr/local/bin/
 sudo cp deploy/status-page.service /etc/systemd/system/
 sudo systemctl enable --now status-page
